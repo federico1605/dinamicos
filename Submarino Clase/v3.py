@@ -63,11 +63,12 @@ class Reservoir:
 
 
 class Submarine:
-   def __init__(self, tank, mass, actual_velocity, pos_y, pos_x):
+   def __init__(self, tank, mass, actual_velocity, current_speed_x, pos_y, pos_x):
        self.pos_x = pos_x
        self.pos_y = pos_y
        self.mass = mass
        self.actual_velocity = actual_velocity
+       self.current_speed_x = current_speed_x
        self.tank = tank
 
    def calculate_mass(self):
@@ -76,11 +77,11 @@ class Submarine:
    def calculate_velocity(self):
        self.actual_velocity = dt * ((e / self.mass) + g - ((b * self.actual_velocity) / self.mass)) + self.actual_velocity
 
-   def calculate_position_x(self, direction):
-       if direction == 'left':
-           self.pos_x -= 10
-       elif direction == 'right':
-           self.pos_x += 10
+   def calculate_velocity_x(self):
+       self.current_speed_x = (dt * (self.current_speed_x - b)) /self.mass + self.current_speed_x
+
+   def calculate_position_x(self):
+        self.pos_x += self.current_speed_x
 
    def calculate_position(self):
        self.pos_y = self.pos_y + self.actual_velocity
@@ -107,7 +108,7 @@ class Submarine:
 def main():
    pygame.init()
    tank1 = Reservoir(1005, 2, 50000, 'air')
-   submarine1 = Submarine(tank1, 2, 2,150,500)
+   submarine1 = Submarine(tank1, 2, 2,0,150,500)
 
    #submarine_image_pos_y = 150
    # --------------------------------------------
@@ -164,7 +165,9 @@ def main():
 
        submarine1.calculate_velocity()
        submarine1.calculate_position()
-       print(submarine1.actual_velocity)
+       submarine1.calculate_position_x()
+       #print(submarine1.actual_velocity)
+       #print(submarine1.current_speed_x)
 
        # place Images onto screen
 
@@ -196,9 +199,10 @@ def main():
                elif event.key == K_DOWN:
                    tank1.pumping_air_water('water')
                elif event.key == pygame.K_LEFT:  # Flecha izquierda
-                    submarine1.calculate_position_x('left')
+                    submarine1.calculate_velocity_x()
                elif event.key == pygame.K_RIGHT:  # Flecha derecha
-                    submarine1.calculate_position_x('right')
+                    submarine1.current_speed_x += 0.5
+                    submarine1.calculate_velocity_x()
 
        submarine1.calculate_mass()
 
