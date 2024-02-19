@@ -4,7 +4,7 @@ import sys
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 626
-sea_level = 80
+sea_level = 10
 submarine_direction_x = 0  # 0 quieto, -1 izquierda, 1 derecha
 submarine_image_pos_x = 500
 submarine_image_pos_yLim = 500
@@ -89,12 +89,12 @@ class Torpedo:
     def __init__(self, speed_x, speed_y, pos_y_torpedo, pos_x_torpedo, mass_torpedo, image_right, image_left, direction_torpedo):
        self.pos_x_torpedo = pos_x_torpedo
        self.pos_y_torpedo = pos_y_torpedo
-       self.speed_x = speed_x * direction_torpedo
+       self.speed_x = speed_x * -direction_torpedo
        self.speed_y = speed_y
        self.mass_torpedo = mass_torpedo
        self.image_right = image_right
        self.image_left = image_left
-       self.image = image_right if direction_torpedo == 1 else image_left
+       self.image = image_right if direction_torpedo == -1 else image_left
 
 def main():
    global submarine_direction_x
@@ -107,10 +107,11 @@ def main():
 
    pygame.display.set_caption("Submarine game")
 
-   background_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\mar.jpg").convert()
-   submarine_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\sub.jpg").convert_alpha()
+   background_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\fondo.jpeg").convert()
+   submarine_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\submarino.jpg").convert_alpha()
    original_submarine_image = submarine_image
-   projectile_image_left = pygame.transform.flip(submarine_image, True, False)
+   torpedo_img = pygame.image.load("..\\dinamicos\\Submarino Clase\\torpedo.png").convert_alpha()
+   projectile_image_left = pygame.transform.flip(torpedo_img, True, False)
 
    screen.blit(submarine_image, (submarine_image_pos_x, submarine_image_pos_y_init))
    screen.blit(background_image, (0, 0))
@@ -143,23 +144,23 @@ def main():
                    tank1.pumping_air_water('water')
 
                elif event.key == pygame.K_LEFT:  # Flecha izquierda
-                    submarine_image = pygame.transform.flip(original_submarine_image, True, False)
-                    submarine_direction_x = -1
+                    submarine_image = original_submarine_image
+                    submarine_direction_x = 1
                     submarine1.set_direction(submarine_direction_x)
                     submarine1.calculate_velocity_x()
 
                elif event.key == pygame.K_RIGHT:  # Flecha derecha
                     submarine1.pushing_force += 0.5
                     submarine1.calculate_velocity_x()
-                    submarine_image = original_submarine_image
-                    submarine_direction_x = 1
+                    submarine_image = pygame.transform.flip(original_submarine_image, True, False)
+                    submarine_direction_x = -1
                     submarine1.set_direction(submarine_direction_x)
 
                elif event.key == pygame.K_SPACE:
                     submarine1.curb_submarine()
 
                elif event.key == pygame.K_a:
-                  new_torpedo = Torpedo(0.8, 0.3, submarine1.pos_x, submarine1.pos_y, 1, submarine_image, projectile_image_left, submarine1.direction)
+                  new_torpedo = Torpedo(0.8, 0.3, submarine1.pos_x, submarine1.pos_y, 1, torpedo_img, projectile_image_left, submarine1.direction)
                   torpedos.append(new_torpedo)
 
 
