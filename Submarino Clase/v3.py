@@ -2,43 +2,21 @@ import pygame
 from pygame.locals import *
 import sys
 
-# -----------
-
-# Constants
-
-# -----------
-
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 626
 sea_level = 80
+submarine_direction_x = 0  # 0 quieto, -1 izquierda, 1 derecha
 submarine_image_pos_x = 500
 submarine_image_pos_yLim = 500
+submarine_image_pos_xLim = 900
 submarine_image_pos_y_init = sea_level
 
-# Gravity constant
-g = 9.8
-
-# Fluid density  1000 m^3/kg for water
-p = 1000
-
-# Robot total volume
-v = 1
-
-# Delta time. It depends on CPU clock frequency and computational complexity
-dt = 1
-
-# Friction constant
-b = 250
-
-# Buoyancy
-e = - (p * g * v)
-
-# ------------------------------
-
-# Classes and Functions
-
-# ------------------------------
-
+g = 9.8 # Gravity constant
+p = 1000  # Fluid density  1000 m^3/kg for water
+v = 1  # Robot total volume
+dt = 1  # Delta time. It depends on CPU clock frequency and computational complexity
+b = 250 # Friction constant
+e = - (p * g * v) # Buoyancy
 
 class Reservoir:
    def __init__(self, actual_level, valve_flow, max_capacity, fluid_to_pump):
@@ -63,13 +41,14 @@ class Reservoir:
 
 
 class Submarine:
-   def __init__(self, tank, mass, actual_velocity, current_speed_x, pos_y, pos_x):
+   def __init__(self, tank, mass, actual_velocity, pushing_force, pos_y, pos_x):
        self.pos_x = pos_x
        self.pos_y = pos_y
        self.mass = mass
        self.actual_velocity = actual_velocity
-       self.current_speed_x = current_speed_x
+       self.pushing_force = pushing_force
        self.tank = tank
+       self.direction = 1
 
    def calculate_mass(self):
        self.mass = self.tank.actual_level
@@ -78,117 +57,80 @@ class Submarine:
        self.actual_velocity = dt * ((e / self.mass) + g - ((b * self.actual_velocity) / self.mass)) + self.actual_velocity
 
    def calculate_velocity_x(self):
-       self.current_speed_x = (dt * (self.current_speed_x - b)) /self.mass + self.current_speed_x
+       self.pushing_force = (dt * (self.pushing_force - b )) /self.mass + self.pushing_force
 
    def calculate_position_x(self):
-        self.pos_x += self.current_speed_x
+        self.pos_x += self.pushing_force
+
+   def curb_submarine(self):
+        self.pushing_force = 0
 
    def calculate_position(self):
        self.pos_y = self.pos_y + self.actual_velocity
-       # -----------------------------------------------------------------
-
-       # Verify that the actual position isn´t greater than the screen edge
-
-       # -----------------------------------------------------------------
 
        if self.pos_y > submarine_image_pos_yLim:
            self.pos_y = submarine_image_pos_yLim
 
        if  self.pos_y < sea_level:
            self.pos_y = sea_level
+
+       if  self.pos_x > submarine_image_pos_xLim:
+           self.pos_x = submarine_image_pos_xLim
+
+       if self.pos_x < sea_level:
+           self.pos_x = sea_level
        # --------------------------------------------
-       return self.pos_y
+       return self.pos_y, self.pos_x
 
-# ------------------------------
+   def set_direction(self, direction):
+        self.direction = direction
 
-# Main function
-
-# ------------------------------
+class Torpedo:
+    def __init__(self, speed_x, speed_y, pos_y_torpedo, pos_x_torpedo, mass_torpedo, image_right, image_left, direction_torpedo):
+       self.pos_x_torpedo = pos_x_torpedo
+       self.pos_y_torpedo = pos_y_torpedo
+       self.speed_x = speed_x * direction_torpedo
+       self.speed_y = speed_y
+       self.mass_torpedo = mass_torpedo
+       self.image_right = image_right
+       self.image_left = image_left
+       self.image = image_right if direction_torpedo == 1 else image_left
 
 def main():
+   global submarine_direction_x
    pygame.init()
    tank1 = Reservoir(1005, 2, 50000, 'air')
    submarine1 = Submarine(tank1, 2, 2,0,150,500)
-
-   #submarine_image_pos_y = 150
-   # --------------------------------------------
-
-   # Creation of the window and assigning a title
-
-   # --------------------------------------------
+   torpedos = []
 
    screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
    pygame.display.set_caption("Submarine game")
 
-   # -----------------------------------------
-
-   # Load images (creation of Surface objects)
-
-   # -----------------------------------------
-
-   background_image = pygame.image.load("E:\\U 2024 I\\dinamicos\\Submarino Clase\\mar.jpg").convert()
-
-   # Some image formats needs alpha conversion
-
-   submarine_image = pygame.image.load("E:\\U 2024 I\\dinamicos\\Submarino Clase\\sub.jpg").convert_alpha()
-
-   # --------------------------------------------
-
-   # The blit method place images onto screen
-
-   # We specify the position of the 'Surface' on the window
-
-   # --------------------------------------------
+   background_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\mar.jpg").convert()
+   submarine_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\sub.jpg").convert_alpha()
+   original_submarine_image = submarine_image
+   projectile_image_left = pygame.transform.flip(submarine_image, True, False)
 
    screen.blit(submarine_image, (submarine_image_pos_x, submarine_image_pos_y_init))
    screen.blit(background_image, (0, 0))
 
-   # --------------------------------------------
-
-   # Displaying changes on the screen
-
-   # --------------------------------------------
-
    pygame.display.flip()
 
-
-   # Main loop
-
    while True:
-
-       # -------------------------------------------------------------------------------------
-
-       # Increases the distance measured from sea level, due to the permanent action of gravity
-
-       # -------------------------------------------------------------------------------------
-
        submarine1.calculate_velocity()
        submarine1.calculate_position()
        submarine1.calculate_position_x()
-       #print(submarine1.actual_velocity)
-       #print(submarine1.current_speed_x)
-
-       # place Images onto screen
-
-       # --------------------------------------------
 
        screen.blit(background_image, (0, 0))
        screen.blit(submarine_image, (submarine1.pos_x, submarine1.pos_y))
 
-       # --------------------------------------------
-
-       # Re-draw all elements
-
-       # --------------------------------------------
+       for torpedo in torpedos:
+            torpedo.pos_x_torpedo += torpedo.speed_y
+            torpedo.pos_y_torpedo += torpedo.speed_x
+            screen.blit(torpedo.image, (torpedo.pos_y_torpedo,torpedo.pos_x_torpedo))
 
        pygame.display.flip()
-
-       # --------------------------------------------
-
-       # Possible mouse and keyboard inputs
-
-       # --------------------------------------------
 
        for event in pygame.event.get():
            if event.type == pygame.QUIT:
@@ -196,15 +138,33 @@ def main():
            elif event.type == pygame.KEYDOWN:
                if event.key == K_UP:
                    tank1.pumping_air_water('air')
+
                elif event.key == K_DOWN:
                    tank1.pumping_air_water('water')
+
                elif event.key == pygame.K_LEFT:  # Flecha izquierda
+                    submarine_image = pygame.transform.flip(original_submarine_image, True, False)
+                    submarine_direction_x = -1
+                    submarine1.set_direction(submarine_direction_x)
                     submarine1.calculate_velocity_x()
+
                elif event.key == pygame.K_RIGHT:  # Flecha derecha
-                    submarine1.current_speed_x += 0.5
+                    submarine1.pushing_force += 0.5
                     submarine1.calculate_velocity_x()
+                    submarine_image = original_submarine_image
+                    submarine_direction_x = 1
+                    submarine1.set_direction(submarine_direction_x)
+
+               elif event.key == pygame.K_SPACE:
+                    submarine1.curb_submarine()
+
+               elif event.key == pygame.K_a:
+                  new_torpedo = Torpedo(0.8, 0.3, submarine1.pos_x, submarine1.pos_y, 1, submarine_image, projectile_image_left, submarine1.direction)
+                  torpedos.append(new_torpedo)
+
 
        submarine1.calculate_mass()
 
 if __name__ == "__main__":
+   submarine_direction_x = 0
    main()
