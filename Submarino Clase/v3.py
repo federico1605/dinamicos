@@ -17,6 +17,10 @@ v = 1  # Robot total volume
 dt = 1  # Delta time. It depends on CPU clock frequency and computational complexity
 b = 250 # Friction constant
 e = - (p * g * v) # Buoyancy
+fep = 30 # Fuerza de propulsion cohete
+fe= 100
+bx = 32
+by = 1
 
 class Reservoir:
    def __init__(self, actual_level, valve_flow, max_capacity, fluid_to_pump):
@@ -79,7 +83,6 @@ class Submarine:
 
        if self.pos_x < sea_level:
            self.pos_x = sea_level
-       # --------------------------------------------
        return self.pos_y, self.pos_x
 
    def set_direction(self, direction):
@@ -95,6 +98,12 @@ class Torpedo:
        self.image_right = image_right
        self.image_left = image_left
        self.image = image_right if direction_torpedo == -1 else image_left
+
+    def calculate_speed_y(self):
+        self.speed_y = (dt * ((e/self.mass_torpedo) + g - ((by * self.speed_y) / self.mass_torpedo))) + self.speed_y
+
+    def calculate_speed_x(self):
+        self.speed_x = (dt * (((fep - bx) * self.speed_x) / self.mass_torpedo)) + self.speed_x
 
 def main():
    global submarine_direction_x
@@ -127,6 +136,9 @@ def main():
        screen.blit(submarine_image, (submarine1.pos_x, submarine1.pos_y))
 
        for torpedo in torpedos:
+            torpedo.calculate_speed_x()
+            torpedo.calculate_speed_y()
+            print(torpedo.speed_y)
             torpedo.pos_x_torpedo += torpedo.speed_y
             torpedo.pos_y_torpedo += torpedo.speed_x
             screen.blit(torpedo.image, (torpedo.pos_y_torpedo,torpedo.pos_x_torpedo))
@@ -160,7 +172,8 @@ def main():
                     submarine1.curb_submarine()
 
                elif event.key == pygame.K_a:
-                  new_torpedo = Torpedo(0.8, 0.3, submarine1.pos_x, submarine1.pos_y, 1, torpedo_img, projectile_image_left, submarine1.direction)
+                  new_torpedo = Torpedo(1, 0.3, submarine1.pos_x, submarine1.pos_y, 1000, torpedo_img, projectile_image_left, submarine1.direction)
+
                   torpedos.append(new_torpedo)
 
 
