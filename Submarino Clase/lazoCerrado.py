@@ -1,6 +1,10 @@
 import pygame
 from pygame.locals import *
 import sys
+import matplotlib.pyplot as plt
+from datetime import datetime, timedelta
+import time
+
 
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 626
@@ -41,6 +45,14 @@ class Reservoir:
            else:
                self.actual_level = self.max_capacity
 
+    def close_loop(self, positionSubmarine, target_y):
+        if positionSubmarine > target_y:
+            self.pumping_air_water("air")
+        elif positionSubmarine < target_y:
+            self.pumping_air_water("water")
+        elif positionSubmarine == target_y:
+            print("nada")
+
 
 class Submarine:
     def __init__(self, tank, mass, actual_velocity, pushing_force, pos_y, pos_x):
@@ -56,8 +68,7 @@ class Submarine:
        self.mass = self.tank.actual_level
 
     def calculate_velocity(self):
-       print(self.mass)
-       self.actual_velocity = dt * ((e / self.mass) + g - ((b * self.actual_velocity) / self.mass)) + self.actual_velocity
+        self.actual_velocity = dt * ((e / self.mass) + g - ((b * self.actual_velocity) / self.mass)) + self.actual_velocity
 
     def calculate_velocity_x(self):
        self.pushing_force = (dt * (self.pushing_force - b )) /self.mass + self.pushing_force
@@ -107,10 +118,12 @@ class Torpedo:
 def main():
     global submarine_direction_x
     pygame.init()
-    tank1 = Reservoir(1005, 2, 50000, 'air')
+    tank1 = Reservoir(1005, 0.5, 50000, 'air')
     submarine1 = Submarine(tank1, 2, 2,0,150,500)
-    torpedos = []
     target_y = 20
+
+    list_time = []
+    list_position = []
 
     screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 
@@ -118,64 +131,56 @@ def main():
 
     background_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\fondo.jpeg").convert()
     submarine_image = pygame.image.load("..\\dinamicos\\Submarino Clase\\submarino.jpg").convert_alpha()
-    original_submarine_image = submarine_image
-    torpedo_img = pygame.image.load("..\\dinamicos\\Submarino Clase\\torpedo.png").convert_alpha()
-    projectile_image_left = pygame.transform.flip(torpedo_img, True, False)
 
     screen.blit(submarine_image, (submarine_image_pos_x, submarine_image_pos_y_init))
     screen.blit(background_image, (0, 0))
 
     pygame.display.flip()
 
-    while True:
+    clock = pygame.time.Clock()
+
+    counter, text = 0, '0'.rjust(3)
+    text = str(counter).rjust(3)
+    pygame.time.set_timer(pygame.USEREVENT, 1000)
+
+    start_time = datetime.now()
+    end_time = start_time + timedelta(seconds=3)
+
+    while datetime.now() < end_time:
+        current_time = datetime.now()
+        elapsed_time = (current_time - start_time).total_seconds()
+        list_time.append(elapsed_time)
         submarine1.calculate_velocity()
         submarine1.calculate_position()
         submarine1.calculate_position_x()
 
+        position_submarine = submarine1.pos_y
+
+
         screen.blit(background_image, (0, 0))
         screen.blit(submarine_image, (submarine1.pos_x, submarine1.pos_y))
 
-        for torpedo in torpedos:
-            torpedo.calculate_speed_x()
-            torpedo.calculate_speed_y()
-            print(torpedo.speed_y)
-            torpedo.pos_x_torpedo += torpedo.speed_y
-            torpedo.pos_y_torpedo += torpedo.speed_x
-            screen.blit(torpedo.image, (torpedo.pos_y_torpedo,torpedo.pos_x_torpedo))
-
         pygame.display.flip()
+
+        list_position.append(position_submarine)
 
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
-            elif event.type == pygame.KEYDOWN:
-                if event.key == K_UP:
-                    tank1.pumping_air_water('air')
-
-                elif event.key == K_DOWN:
-                    tank1.pumping_air_water('water')
-
-                elif event.key == pygame.K_LEFT:  # Flecha izquierda
-                    submarine_image = original_submarine_image
-                    submarine_direction_x = 1
-                    submarine1.set_direction(submarine_direction_x)
-                    submarine1.calculate_velocity_x()
-
-                elif event.key == pygame.K_RIGHT:  # Flecha derecha
-                    submarine1.pushing_force += 0.5
-                    submarine1.calculate_velocity_x()
-                    submarine_image = pygame.transform.flip(original_submarine_image, True, False)
-                    submarine_direction_x = -1
-                    submarine1.set_direction(submarine_direction_x)
-
-                elif event.key == pygame.K_SPACE:
-                    submarine1.curb_submarine()
-
-                elif event.key == pygame.K_a:
-                    new_torpedo = Torpedo(1, 1, submarine1.pos_x, submarine1.pos_y, 1000, torpedo_img, projectile_image_left, submarine1.direction)
-                    torpedos.append(new_torpedo)
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                    print("Si entro")
+                    x, y = pygame.mouse.get_pos()
+                    target_y = y
 
         submarine1.calculate_mass()
+        tank1.close_loop(position_submarine,target_y)
+
+    plt.plot(list_time,list_position)
+    plt.xlabel("Position X")
+    plt.ylabel("Position Y")
+
+    plt.xticks(range(int(min(list_time)), int(max(list_time)) + 1, 1))
+    plt.show()
 
 
 if __name__ == "__main__":
