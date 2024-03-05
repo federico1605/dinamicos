@@ -1,15 +1,17 @@
 import pygame
 from pygame.locals import *
 import sys
-import matplotlib.pyplot as plt
-from datetime import datetime, timedelta
-import time
+import matplotlib.pyplot as plt #Libreria para graficar los desplazamientos
+from datetime import datetime, timedelta #Libreria para temporizador
 
-
+# Variables de tamaño de la pantalla
 SCREEN_WIDTH = 1000
 SCREEN_HEIGHT = 626
+# Limite del mar
 sea_level = 10
+#Variable para darle direccion a la imagen del submarino.
 submarine_direction_x = 0  # 0 quieto, -1 izquierda, 1 derecha
+# coordenadas de inicio de submarino
 submarine_image_pos_x = 500
 submarine_image_pos_yLim = 500
 submarine_image_pos_xLim = 900
@@ -25,6 +27,7 @@ fep = 30 # Fuerza de propulsion cohete
 bx = 32
 by = 1
 
+# Clase del tanque donde se controla si el submarino sube o baja segun el volumen del tanque
 class Reservoir:
     def __init__(self, actual_level, valve_flow, max_capacity, fluid_to_pump):
        self.actual_level = actual_level
@@ -45,15 +48,18 @@ class Reservoir:
            else:
                self.actual_level = self.max_capacity
 
+    # Esta es la clase de lazo cerrado con la que se valida la altura a la que debe llegar el submarino
+    # La variable target_y es la posicion en y a la que debe llegar el submarino.
     def close_loop(self, positionSubmarine, target_y):
-        if positionSubmarine > target_y:
+        if positionSubmarine > target_y: #Si el submarino se encuentra en la parte inferior al nivel deseado se le ingresa aire
             self.pumping_air_water("air")
-        elif positionSubmarine < target_y:
+        elif positionSubmarine < target_y: #Si el submarino se encuentra en la parte superior al nivel deseado se le ingresa agua
             self.pumping_air_water("water")
-        elif positionSubmarine == target_y:
+        elif positionSubmarine == target_y: #Si se encuentra en el nivel no hace nada
             print("nada")
 
 
+# Clase del submarino donde tiene los metodos para calcular el movimiento
 class Submarine:
     def __init__(self, tank, mass, actual_velocity, pushing_force, pos_y, pos_x):
        self.pos_x = pos_x
@@ -98,30 +104,13 @@ class Submarine:
     def set_direction(self, direction):
         self.direction = direction
 
-class Torpedo:
-    def __init__(self, speed_x, speed_y, pos_y_torpedo, pos_x_torpedo, mass_torpedo, image_right, image_left, direction_torpedo):
-       self.pos_x_torpedo = pos_x_torpedo
-       self.pos_y_torpedo = pos_y_torpedo
-       self.speed_x = speed_x * -direction_torpedo
-       self.speed_y = speed_y
-       self.mass_torpedo = mass_torpedo
-       self.image_right = image_right
-       self.image_left = image_left
-       self.image = image_right if direction_torpedo == -1 else image_left
-
-    def calculate_speed_y(self):
-        self.speed_y = (dt * ((e/self.mass_torpedo) + g - ((by * self.speed_y) / self.mass_torpedo))) + self.speed_y
-
-    def calculate_speed_x(self):
-        self.speed_x = (dt * (((fep - bx) * self.speed_x) / self.mass_torpedo)) + self.speed_x
-
 def main():
     global submarine_direction_x
     pygame.init()
     tank1 = Reservoir(1005, 0.5, 50000, 'air')
     submarine1 = Submarine(tank1, 2, 2,0,150,500)
     target_y = 20
-
+    #Estas dos listas se inicializan para guardar la lista de posiciones y la lista del tiempo para realizar la grafica
     list_time = []
     list_position = []
 
@@ -137,49 +126,57 @@ def main():
 
     pygame.display.flip()
 
-    clock = pygame.time.Clock()
-
-    counter, text = 0, '0'.rjust(3)
-    text = str(counter).rjust(3)
-    pygame.time.set_timer(pygame.USEREVENT, 1000)
-
+    #La variable star_time se inicializa con el tiempo real actual, para iniciar el while con un temporizador
     start_time = datetime.now()
-    end_time = start_time + timedelta(seconds=3)
+    #En end_time se usa para ponerle el limite al temporizador
+    end_time = start_time + timedelta(seconds=5)
 
+    #Se cambio el funcionamiento del while y se limita cuando se cumpla el tiempo del temporizador
     while datetime.now() < end_time:
+        #La variable current_time se guarda con la hora
         current_time = datetime.now()
+        #La hora guardada en el currente_time se resta con el tiempo de inicio y solo se toman los segundos
+        #Se hace esto porque de esta forma podemor limitar el temporizador en el tiempo deseado
         elapsed_time = (current_time - start_time).total_seconds()
+        #Esos segundos resultantes se guardan en la lista del tiempo para la grafica
         list_time.append(elapsed_time)
+        #Se guardan las posiciones del submarino que tenga cada segundo en la lista
+        position_submarine = submarine1.pos_y
+        list_position.append(position_submarine)
+
         submarine1.calculate_velocity()
         submarine1.calculate_position()
         submarine1.calculate_position_x()
-
-        position_submarine = submarine1.pos_y
-
 
         screen.blit(background_image, (0, 0))
         screen.blit(submarine_image, (submarine1.pos_x, submarine1.pos_y))
 
         pygame.display.flip()
 
-        list_position.append(position_submarine)
-
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 sys.exit()
-            elif event.type == pygame.MOUSEBUTTONDOWN:
-                    print("Si entro")
+            elif event.type == pygame.MOUSEBUTTONDOWN: #Aqui se realiza el evento del mouse.
+                    #Se hace uso de la libreria del pygame y el metodo MOUSEBUTTONDOWN con el cual se detecta cuando se hace click
+                    #Se guarda en la variable y la posicion del mouse dentro del juego
                     x, y = pygame.mouse.get_pos()
+                    #Se guarda el valor en una variable global
                     target_y = y
 
         submarine1.calculate_mass()
+        #Se hace el llamdo al metodo de close_loop y se ingresa como parametro el valor de la posición del submarino y a donde desea llegar
         tank1.close_loop(position_submarine,target_y)
 
+    #Se hace llamado a la libreria de Matplotlib con la cual se puede graficar las lineas de tiempo
+    #Se hace con el meto plt.plot, donde se le pasa como parametros cada uno de los ejes tanto el del tiempo como las posiciones
     plt.plot(list_time,list_position)
+    #se le da un nombre a cada eje
     plt.xlabel("Position X")
     plt.ylabel("Position Y")
 
+    #Hacemos que la grafica entienda que cada uno de los datos en el eje x y y son uno a uno para que entienda el grafico
     plt.xticks(range(int(min(list_time)), int(max(list_time)) + 1, 1))
+    #Se muestra la grafica.
     plt.show()
 
 
